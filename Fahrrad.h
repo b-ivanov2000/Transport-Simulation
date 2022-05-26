@@ -9,7 +9,13 @@ public:
     // Konstruktor
     Fahrrad(const string sName, const double dMaxGeschw);
 
-    // Destrukor
+    // Default-Konstruktor
+    Fahrrad();
+
+    // Destruktor
     virtual ~Fahrrad();
+
+    // Zeichnung
+    void vZeichnen(const Weg&)const override;
 };
 

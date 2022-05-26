@@ -1,78 +1,74 @@
 #include "Fahrzeug.h"
+#include "Weg.h"
+#include "Verhalten.h"
+#include "Parken.h"
+#include "Fahren.h"
+#include "Hilfsfunktionen.h"
 
-
-// Initialisiering der hochzaehlende Variable
-int Fahrzeug::p_iMaxID = 0;
-
-Fahrzeug::Fahrzeug(): p_iID(p_iMaxID)
+Fahrzeug::Fahrzeug(): Simulationsobjekt()
 {
-	p_iMaxID++;
-	cout << "---Default-Konstruktor---" << endl;
-	cout << "Erzeugtes Fahrzeug: " << endl;
-	cout << "Name: " << p_sName << endl;
-	cout << "ID: " << p_iID << endl;
+	cout << "Typ des Simulationsobjektes: Fahrzeug" << endl;
 	cout << endl;
 }
 
-Fahrzeug::Fahrzeug(const string sName) : p_sName(sName), p_iID(p_iMaxID)
+Fahrzeug::Fahrzeug(const string sName) : Simulationsobjekt(sName)
 {
-	p_iMaxID++;
-	cout << "---Konstruktor---" << endl;
-	cout << "Erzeugtes Fahrzeug: " << endl;
-	cout << "Name: " << p_sName << endl;
-	cout << "ID: " << p_iID << endl;
+	cout << "Typ des Simulationsobjektes: Fahrzeug" << endl;
 	cout << endl;
 }
 
 Fahrzeug::Fahrzeug(const string sName, const double dMaxGeschw) 
-	: p_sName(sName), p_dMaxGeschwindigkeit((dMaxGeschw > 0) ? dMaxGeschw : 0), p_iID(p_iMaxID)
+	: Simulationsobjekt(sName), p_dMaxGeschwindigkeit((dMaxGeschw > 0) ? dMaxGeschw : 0)
 {
-	p_iMaxID++;
-	cout << "---Konstruktor---" << endl;
-	cout << "Erzeugtes Fahrzeug: " << endl;
-	cout << "Name: " << p_sName << endl;
-	cout << "ID: " << p_iID << endl;
+	cout << "Typ des Simulationsobjektes: Fahrzeug" << endl;
 	cout << endl;
 }
 
 Fahrzeug::~Fahrzeug()
 {
-	cout << "---Destruktor---" << endl;
-	cout << "Geloeschtes Fahrzeug: " << endl;
-	cout << "Name: " << p_sName << endl;
-	cout << "ID: " << p_iID << endl;
-	cout << endl;
-
 }
 
 void Fahrzeug::vAusgeben(ostream& o) const
 {
-	o.flags(ios::right);
-	o << setw(2) << p_iID;
-	o << setw(4) << " ";
-	o.flags(ios::left);
-	o << setw(14) << p_sName;
+	Simulationsobjekt::vAusgeben(o);
 	o.flags(ios::right);
 	o.setf(ios::fixed, ios::floatfield);
 	o.precision(2);
-	o << setw(14) << p_dMaxGeschwindigkeit << setw(17) << p_dGesamtStrecke << setw(28) << dGeschwindigkeit();
+	o << setw(16) << p_dMaxGeschwindigkeit << setw(17) << p_dGesamtStrecke << setw(28) << dGeschwindigkeit();
 }
 
 void Fahrzeug::vKopf()
 {
 	cout << resetiosflags(ios::left);
-	cout << "ID" << setw(8) << "Name" << setw(24) << "Max. Geschwindigkeit" << setw(17) << "Gesamtstrecke"
-		 << setw(28) << "aktuelle Geschwindigkeit" << setw(19) << "Gesamtverbrauch"  << setw(24) << "aktueller Tankinhalt" << endl;
+	cout << setw(4) << "ID" << setw(6) << "Name" << setw(24) << "Max. Geschwindigkeit" << setw(17) << "Gesamtstrecke"
+		<< setw(28) << "aktuelle Geschwindigkeit" << setw(19) << "Gesamtverbrauch" << setw(24) << "aktueller Tankinhalt" << endl;
 	cout << "--------------------------------------------------------------------------------------------------------------------------";
+	cout << endl;
 }
 
 void Fahrzeug::vSimulieren()
 {
 	// if-statement ueberprueft, ob das Fahrzeug in einem Zeitschitt nur einmal sich bewegt.
-	if (p_dZeit < dGlobaleZeit)
+	if (bDoublesKleiner(p_dZeit, dGlobaleZeit, 1e-6))
 	{
-		p_dGesamtStrecke += (dGlobaleZeit - p_dZeit) * dGeschwindigkeit();
-		p_dGesamtZeit += dGlobaleZeit - p_dZeit;
+		double dFahrzeit = dGlobaleZeit - p_dZeit;
+		if (p_pVerhalten != nullptr)
+		{
+
+			double dFahrstrecke = p_pVerhalten->dStrecke(*this, dFahrzeit);
+
+			// Aktualisation der Strecke auf dem aktuellen Weg
+			p_dAbschnittStrecke += dFahrstrecke;
+			// Aktualisation der gesamte Strecke
+			p_dGesamtStrecke += dFahrstrecke;
+
+		}
+		else
+		{
+			p_dGesamtStrecke += dFahrzeit * dGeschwindigkeit();
+		}
+		p_dGesamtZeit += dFahrzeit;
+		// Aktualisation der p_dZeit
 		p_dZeit = dGlobaleZeit;
 	}
 }
@@ -87,20 +83,62 @@ double Fahrzeug::dGeschwindigkeit() const
 	return p_dMaxGeschwindigkeit;
 }
 
-bool Fahrzeug::operator<(const Fahrzeug& pFzg) const
+bool Fahrzeug::operator<(const Fahrzeug& aFzg) const
 {
-	if (this->p_dGesamtStrecke < pFzg.p_dGesamtStrecke) return true;
+	if (bDoublesKleiner(this->p_dGesamtStrecke, aFzg.p_dGesamtStrecke, 1e-6)) return true;
 	else return false;
 }
 
-ostream& operator<<(ostream& o, const Fahrzeug& pFzg)
+void Fahrzeug::operator=(const Fahrzeug& aFzg)
 {
-	pFzg.vAusgeben(o);
-	return o;
+	this->p_sName = aFzg.p_sName;
+	this->p_dMaxGeschwindigkeit = aFzg.p_dMaxGeschwindigkeit;
 }
 
-void Fahrzeug::operator=(const Fahrzeug& pFzg)
+// fuer fahrende Fahrzeuge
+void Fahrzeug::vNeueStrecke(Weg& aWeg)
 {
-	this->p_sName = pFzg.p_sName;
-	this->p_dMaxGeschwindigkeit = pFzg.p_dMaxGeschwindigkeit;
+	// So wird die alte Instanz geloescht
+	p_pVerhalten = make_unique<Fahren>(aWeg);
+
+	// Neuer Weg => die Strecke auf diesem Weg ist 0
+	this->p_dAbschnittStrecke = 0; 
+
+	// Aktualisation der Zeit
+	p_dZeit = dGlobaleZeit;
+}
+
+// fuer geparkte Fahrzeuge
+void Fahrzeug::vNeueStrecke(Weg& aWeg, double dStartzeitpunkt)
+{
+	// So wird die alte Instanz geloescht
+	p_pVerhalten = make_unique<Parken>(aWeg, dStartzeitpunkt);
+
+	// Neuer Weg => die Strecke auf diesem Weg ist 0
+	this->p_dAbschnittStrecke = 0.0;
+
+	// Aktualisation der Zeit
+	p_dZeit = dGlobaleZeit;
+}
+
+double Fahrzeug::dGetAbschnittstrecke() const
+{
+	return p_dAbschnittStrecke;
+}
+
+void Fahrzeug::vZeichnen(const Weg& aWeg) const
+{
+}
+
+bool Fahrzeug::bUberholbar() const
+{
+	// default ist false - damit Fahrraeder das direkt benutzen koennen
+	return false;
+}
+
+
+void Fahrzeug::vEinlesen(istream& in)
+{
+	Simulationsobjekt::vEinlesen(in);
+	in >> p_dMaxGeschwindigkeit;
 }
